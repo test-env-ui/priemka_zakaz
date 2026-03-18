@@ -215,9 +215,35 @@
     min-height:84px;
     display:flex; flex-direction:column; gap:10px;
   }
-  .kpi .klabel{ font-size:12px; color:var(--muted); font-weight:900; line-height:1.25; }
+  .kpi .klabel{ font-size:12px; color:var(--muted); font-weight:900; line-height:1.25; display:flex; align-items:center; gap:6px; }
   .kpi .kvalue{ font-size:34px; font-weight:950; letter-spacing:.2px; }
   .kpi .kdelta{ font-size:14px; font-weight:950; color:var(--good); }
+
+  .kpi-info{ position:relative; display:inline-flex; }
+  .kpi-info .info-icon{
+    width:18px; height:18px; border-radius:50%;
+    background:#f3f4f6; color:#6b7280;
+    font-size:11px; font-weight:900;
+    display:flex; align-items:center; justify-content:center;
+    cursor:help; flex-shrink:0;
+  }
+  .kpi-info .info-tooltip{
+    display:none;
+    position:absolute;
+    left:0; top:24px;
+    width:300px;
+    background:#1f2937;
+    color:#f9fafb;
+    font-size:12px;
+    font-weight:500;
+    line-height:1.5;
+    padding:10px 12px;
+    border-radius:10px;
+    box-shadow:0 8px 24px rgba(0,0,0,.22);
+    z-index:70;
+    pointer-events:none;
+  }
+  .kpi-info:hover .info-tooltip{ display:block; }
 
   .lane{ margin-top:12px; }
   .lane-title{
@@ -652,19 +678,29 @@ function buildKpis(){
   const cur = agg(state.filtered);
 
   const cards = [
-    { label:"% подобранных заказов", value: fmtPct(cur.pickRateOrders) },
-    { label:"кол-во подобранных заказов", value: fmtNum(cur.pickedAbs) },
-    { label:"Экономия склада на подобранных заказах", value: fmtRub(cur.savingsRub) },
-    { label:"Сумма заказов в деньгах", value: fmtRub(cur.pickedAmountRub) }
+    { label:"% подобранных заказов", value: fmtPct(cur.pickRateOrders),
+      tooltip:"Источник: WMS\nФормула: кол-во подобранных заказов / общее кол-во заказов × 100%\nПодобранный заказ — заказ со статусом 3 или 4 на приемке" },
+    { label:"кол-во подобранных заказов", value: fmtNum(cur.pickedAbs),
+      tooltip:"Источник: WMS\nКоличество заказов со статусом «подобран» (статус 3 или 4) за выбранный период по выбранным складам" },
+    { label:"Экономия склада на подобранных заказах", value: fmtRub(cur.savingsRub),
+      tooltip:"Источник: WMS + финансовая модель\nФормула: кол-во подобранных заказов × средняя стоимость обработки заказа на складе\nОтражает экономию за счёт перехвата заказов до полной приемки" },
+    { label:"Сумма заказов в деньгах", value: fmtRub(cur.pickedAmountRub),
+      tooltip:"Источник: WMS + OMS\nФормула: сумма стоимости всех подобранных заказов в рублях\nУчитывается средний чек заказа × кол-во подобранных заказов" }
   ];
 
   kpiGrid.innerHTML = "";
   cards.forEach(c=>{
     const delta = state.kpiDeltaPct[c.label] ?? 0.12;
+    const tooltipHtml = c.tooltip.replace(/\n/g, "<br>");
     const d = document.createElement("div");
     d.className = "card kpi";
     d.innerHTML = `
-      <div class="klabel">${c.label}</div>
+      <div class="klabel">${c.label}
+        <span class="kpi-info">
+          <span class="info-icon">i</span>
+          <span class="info-tooltip">${tooltipHtml}</span>
+        </span>
+      </div>
       <div class="kvalue">${c.value}</div>
       <div class="kdelta">+${(delta*100).toFixed(1)}% к предыдущему периоду</div>
     `;
