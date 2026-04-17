@@ -903,12 +903,14 @@ function buildTable(){
   const {from,to} = getDateRange();
   const periodLabel = `${from} — ${to}`;
 
-  const g = groupBy(state.filtered, r => r.warehouse);
+  const g = groupBy(state.filtered, r => r.warehouse + '|' + r.block);
 
-  let rows = Array.from(g.entries()).map(([warehouse, items])=>{
+  let rows = Array.from(g.entries()).map(([key, items])=>{
+    const [warehouse, block] = key.split('|');
     const a = agg(items);
     return {
       "Склад": warehouse,
+      "Блок": block,
       "Период": periodLabel,
       "кол-во подобранных заказов": a.pickedAbs,
       "% подобранных заказов": a.pickRateOrders,
@@ -919,6 +921,7 @@ function buildTable(){
 
   const cols = [
     "Склад",
+    "Блок",
     "Период",
     "кол-во подобранных заказов",
     "% подобранных заказов",
@@ -935,7 +938,7 @@ function buildTable(){
       return String(av).localeCompare(String(bv))*dir;
     });
   } else {
-    rows.sort((a,b)=> String(a["Склад"]).localeCompare(String(b["Склад"])));
+    rows.sort((a,b)=> String(a["Склад"]).localeCompare(String(b["Склад"])) || String(a["Блок"]).localeCompare(String(b["Блок"])));
   }
 
   thead.innerHTML = "<tr>" + cols.map(c=>`<th data-col="${c}">${c}</th>`).join("") + "</tr>";
@@ -944,7 +947,7 @@ function buildTable(){
     return "<tr>" + cols.map(c=>{
       const v = r[c];
 
-      if(c === "Склад" || c === "Период"){
+      if(c === "Склад" || c === "Блок" || c === "Период"){
         return `<td>${v}</td>`;
       }
 
@@ -960,6 +963,7 @@ function buildTable(){
   const total = agg(state.filtered);
   const totalsRow = {
     "Склад":"Итого",
+    "Блок":"",
     "Период": periodLabel,
     "кол-во подобранных заказов": total.pickedAbs,
     "% подобранных заказов": total.pickRateOrders,
@@ -970,7 +974,7 @@ function buildTable(){
   tfoot.innerHTML = "<tr>" + cols.map(c=>{
     const v = totalsRow[c];
 
-    if(c === "Склад" || c === "Период"){
+    if(c === "Склад" || c === "Блок" || c === "Период"){
       return `<td>${v}</td>`;
     }
 
