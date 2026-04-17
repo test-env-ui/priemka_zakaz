@@ -319,6 +319,20 @@
       <div class="menu" id="whMenu"></div>
     </div>
 
+    <div class="fgroup dropdown" style="min-width:280px;">
+      <div class="flabel">Блок (выбрано: <span id="blCount">0</span>)</div>
+      <div class="control" id="blControl" style="cursor:pointer;">
+        <div class="control-col">
+          <div class="main" id="blMain">Выбраны все</div>
+          <div class="sub">Мультивыбор</div>
+        </div>
+        <div style="flex:1"></div>
+        <div class="clear" id="blClear" title="Сброс">×</div>
+        <div class="caret">▾</div>
+      </div>
+      <div class="menu" id="blMenu"></div>
+    </div>
+
     <div class="fgroup" style="min-width:420px; flex:1 1 auto;">
       <div class="flabel">Период *</div>
       <div class="daterange">
@@ -447,6 +461,7 @@ const WAREHOUSES = [
   "Санкт-Петербург","Ростов-на-Дону","Нижний Новгород","Самара","Тула",
   "Воронеж","Уфа","Пермь","Омск","Красноярск"
 ];
+const BLOCKS = ["Блок A","Блок B","Блок C","Блок D"];
 
 const state = {
   raw: [],
@@ -454,6 +469,7 @@ const state = {
   sort: { key: null, dir: "desc" },
   charts: {},
   selectedWarehouses: new Set(),
+  selectedBlocks: new Set(BLOCKS),
   kpiDeltaPct: {}
 };
 
@@ -556,6 +572,62 @@ function toggleWarehouseMenu(force){
   const menu = document.getElementById("whMenu");
   const open = (typeof force === "boolean") ? force : !menu.classList.contains("open");
   menu.classList.toggle("open", open);
+  if(open) toggleBlockMenu(false);
+}
+
+/* ===== Block multiselect ===== */
+function buildBlockMenu(){
+  const menu = document.getElementById("blMenu");
+  menu.innerHTML = "";
+
+  const mkRow = (name, checked, onToggle)=>{
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML = `<input type="checkbox" ${checked?"checked":""} /><div class="name">${name}</div>`;
+    const cb = row.querySelector("input");
+    row.addEventListener("click",(e)=>{
+      if(e.target.tagName!=="INPUT") cb.checked=!cb.checked;
+      onToggle(cb.checked);
+      e.stopPropagation();
+    });
+    cb.addEventListener("click",(e)=>e.stopPropagation());
+    return row;
+  };
+
+  const allChecked = state.selectedBlocks.size === BLOCKS.length;
+  menu.appendChild(mkRow("Выбрать все", allChecked, (isOn)=>{
+    state.selectedBlocks = isOn ? new Set(BLOCKS) : new Set();
+    buildBlockMenu();
+    updateBlockControl();
+  }));
+
+  const hr = document.createElement("div");
+  hr.style.cssText="height:1px;background:var(--line);margin:8px 0";
+  menu.appendChild(hr);
+
+  BLOCKS.forEach(b=>{
+    menu.appendChild(mkRow(b, state.selectedBlocks.has(b), (isOn)=>{
+      if(isOn) state.selectedBlocks.add(b); else state.selectedBlocks.delete(b);
+      buildBlockMenu();
+      updateBlockControl();
+    }));
+  });
+}
+
+function updateBlockControl(){
+  const cnt = state.selectedBlocks.size;
+  document.getElementById("blCount").textContent = cnt;
+  const main = document.getElementById("blMain");
+  if(cnt===0) main.textContent="Не выбрано";
+  else if(cnt===BLOCKS.length) main.textContent="Выбраны все";
+  else main.textContent=`Выбрано: ${cnt}`;
+}
+
+function toggleBlockMenu(force){
+  const menu = document.getElementById("blMenu");
+  const open = (typeof force==="boolean") ? force : !menu.classList.contains("open");
+  menu.classList.toggle("open", open);
+  if(open) toggleWarehouseMenu(false);
 }
 
 /* ===== Data ===== */
@@ -583,6 +655,7 @@ function generateMockRows(){
     const weekendFactor = (dow===0 || dow===6) ? 0.72 : 1.0;
 
     WAREHOUSES.forEach(wh=>{
+      BLOCKS.forEach(bl=>{
       const whFactor =
         wh === "Коледино" ? 1.25 :
         wh === "Казань" ? 1.05 :
@@ -591,7 +664,9 @@ function generateMockRows(){
         wh === "Новосибирск" ? 0.92 :
         0.90 + (Math.abs(hashCode(wh)) % 20)/100;
 
-      const orders = Math.round(rand(320, 780) * whFactor * weekendFactor);
+      const blFactor = 0.15 + (Math.abs(hashCode(bl)) % 20)/100;
+
+      const orders = Math.round(rand(80, 200) * whFactor * weekendFactor * blFactor);
       const unitsPerOrder = rand(1.10, 1.55);
       const units = Math.round(orders * unitsPerOrder);
 
@@ -611,12 +686,14 @@ function generateMockRows(){
       rows.push({
         date,
         warehouse: wh,
+        block: bl,
         orders,
         units,
         pick_rate_orders: pickRateOrders,
         picked_abs: pickedAbs,
         picked_amount_rub: pickedAmountRub,
         savings_rub: savingsRub
+      });
       });
     });
   }
@@ -627,6 +704,7 @@ function applyFilters(){
   const {from, to} = getDateRange();
   state.filtered = state.raw.filter(r =>
     state.selectedWarehouses.has(r.warehouse) &&
+    state.selectedBlocks.has(r.block) &&
     r.date >= from && r.date <= to
   );
 }
@@ -962,8 +1040,25 @@ function refreshAll(regen=false){
     refreshAll(false);
   });
 
-  document.addEventListener("click", ()=> toggleWarehouseMenu(false));
+  document.addEventListener("click", ()=> { toggleWarehouseMenu(false); toggleBlockMenu(false); });
   document.getElementById("whMenu").addEventListener("click",(e)=> e.stopPropagation());
+
+  // Block filter
+  buildBlockMenu();
+  updateBlockControl();
+  document.getElementById("blControl").addEventListener("click", (e)=>{
+    if(e.target && e.target.id === "blClear") return;
+    toggleBlockMenu();
+  });
+  document.getElementById("blClear").addEventListener("click", (e)=>{
+    e.stopPropagation();
+    state.selectedBlocks = new Set(BLOCKS);
+    buildBlockMenu();
+    updateBlockControl();
+    toggleBlockMenu(false);
+    refreshAll(false);
+  });
+  document.getElementById("blMenu").addEventListener("click",(e)=> e.stopPropagation());
 
   document.querySelectorAll(".tab").forEach(t=>{
     t.addEventListener("click", ()=> setTab(t.dataset.tab));
