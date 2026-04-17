@@ -63,9 +63,9 @@
     display:flex;
     gap:14px;
     align-items:flex-end;
-    flex-wrap:wrap;
+    flex-wrap:nowrap;
   }
-  .fgroup{ display:flex; flex-direction:column; gap:6px; }
+  .fgroup{ display:flex; flex-direction:column; gap:6px; flex-shrink:0; }
   .flabel{
     font-size:12px;
     color:var(--muted);
@@ -305,7 +305,7 @@
 
 <div class="filtersbar">
   <div class="filters">
-    <div class="fgroup dropdown" style="min-width:340px;">
+    <div class="fgroup dropdown" style="min-width:240px;">
       <div class="flabel">Склад (выбрано: <span id="whCount">0</span>) *</div>
       <div class="control" id="whControl" style="cursor:pointer;">
         <div class="control-col">
@@ -319,7 +319,7 @@
       <div class="menu" id="whMenu"></div>
     </div>
 
-    <div class="fgroup dropdown" style="min-width:280px;">
+    <div class="fgroup dropdown" style="min-width:200px;">
       <div class="flabel">Блок (выбрано: <span id="blCount">0</span>)</div>
       <div class="control" id="blControl" style="cursor:pointer;">
         <div class="control-col">
@@ -333,7 +333,7 @@
       <div class="menu" id="blMenu"></div>
     </div>
 
-    <div class="fgroup" style="min-width:420px; flex:1 1 auto;">
+    <div class="fgroup" style="min-width:320px; flex:1 1 auto;">
       <div class="flabel">Период *</div>
       <div class="daterange">
         <div class="range-pill" style="flex:1 1 auto; min-width:320px;">
